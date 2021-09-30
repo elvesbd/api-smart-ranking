@@ -2,36 +2,49 @@ import { Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { CreatePlayerDto } from './dto/create-player.dto';
 import { Player } from './interfaces/player.interface';
 import { v4 as uuid } from 'uuid';
+import { InjectModel } from '@nestjs/mongoose';
+import { Model } from 'mongoose';
+import { UpdatePlayerDto } from './dto/update-player.dto';
 
 @Injectable()
 export class PlayersService {
+  constructor(
+    @InjectModel('Player')
+    private readonly playerModel: Model<Player>,
+  ) {}
+
   private readonly Logger = new Logger(PlayersService.name);
 
-  private players: Player[] = [];
-
-  createPlayer(createPlayerDto: CreatePlayerDto): void {
-    const { name, phone, email } = createPlayerDto;
-
-    const player: Player = {
-      _id: uuid(),
-      name,
-      phone,
-      email,
-      ranking: 'A',
-      rankingPosition: 1,
-      urlPhotoPlayer: 'http://www.google.com/photo.png',
-    };
-    this.Logger.log(player);
-    this.players.push(player);
+  async createPlayer(createPlayerDto: CreatePlayerDto): Promise<Player> {
+    const player = new this.playerModel(createPlayerDto);
+    return await player.save();
   }
 
   async findAllPlayers(): Promise<Player[]> {
-    return this.players;
+    return this.playerModel.find().exec();
   }
 
-  updatePlayer(foundPlayer: Player, createPlayerDto: CreatePlayerDto): void {
-    const { name } = createPlayerDto;
+  async findPlayerById(id: string): Promise<Player> {
+    const player = this.playerModel.findById(id).exec();
 
-    foundPlayer.name = name;
+    if (!player) {
+      throw new NotFoundException('Player not found');
+    }
+    return player;
+  }
+
+  async updatePlayer(
+    id: string,
+    updatePlayerDto: UpdatePlayerDto,
+  ): Promise<Player> {
+    const foundPlayer = await this.playerModel
+      .findByIdAndUpdate(id, updatePlayerDto)
+      .exec();
+
+    return foundPlayer;
+  }
+
+  async deletePlayerById(id: string) {
+    return await this.playerModel.findOneAndDelete({ _id: id }).exec();
   }
 }
