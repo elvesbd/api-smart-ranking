@@ -7,16 +7,21 @@ import {
   Patch,
   Post,
   Put,
+  Query,
+  UsePipes,
+  ValidationPipe,
 } from '@nestjs/common';
 import { CreatePlayerDto } from './dto/create-player.dto';
 import { UpdatePlayerDto } from './dto/update-player.dto';
 import { Player } from './interfaces/player.interface';
 import { PlayersService } from './players.service';
+import { PlayersValidationPipes } from './pipes/players-validation.pipes';
 
 @Controller('players')
 export class PlayersController {
   constructor(private readonly playersService: PlayersService) {}
 
+  @UsePipes(ValidationPipe)
   @Post()
   async createPlayer(@Body() createPlayerDto: CreatePlayerDto) {
     return this.playersService.createPlayer(createPlayerDto);
@@ -33,15 +38,15 @@ export class PlayersController {
   }
 
   @Patch(':id')
-  update(
+  updatePlayerById(
     @Param('id') id: string,
     @Body() updateCourseDto: UpdatePlayerDto,
   ): Promise<Player> {
-    return this.playersService.updatePlayer(id, updateCourseDto);
+    return this.playersService.updatePlayerById(id, updateCourseDto);
   }
 
   @Delete(':id')
-  deletePlayerById(@Param('id') id: string) {
+  deletePlayerById(@Param('id', PlayersValidationPipes) id: string) {
     return this.playersService.deletePlayerById(id);
   }
 }
