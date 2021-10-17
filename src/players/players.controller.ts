@@ -11,11 +11,11 @@ import {
   UsePipes,
   ValidationPipe,
 } from '@nestjs/common';
+import { ValidationParamsPipes } from 'src/shared/pipes/validation-params.pipes';
 import { CreatePlayerDto } from './dto/create-player.dto';
 import { UpdatePlayerDto } from './dto/update-player.dto';
 import { Player } from './interfaces/player.interface';
 import { PlayersService } from './players.service';
-import { PlayersValidationPipes } from './pipes/players-validation.pipes';
 
 @Controller('players')
 export class PlayersController {
@@ -46,7 +46,7 @@ export class PlayersController {
   }
 
   @Delete(':id')
-  deletePlayerById(@Param('id', PlayersValidationPipes) id: string) {
+  deletePlayerById(@Param('id', ValidationParamsPipes) id: string) {
     return this.playersService.deletePlayerById(id);
   }
 }
