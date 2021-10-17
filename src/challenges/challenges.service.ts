@@ -32,11 +32,10 @@ export class ChallengesService {
         throw new BadRequestException(`Id ${playerDto._id} is not player`);
       }
     });
-
     const requestingPlayerIsMatch = await createChallengeDto.players.filter(
       (player) => player._id == createChallengeDto.challenger,
     );
-
+    this.logger.debug('requestingPlayersIsMatch', requestingPlayerIsMatch);
     if (requestingPlayerIsMatch.length == 0) {
       throw new BadRequestException(`The requesting player is not matching`);
     }
