@@ -1,9 +1,15 @@
-import { BadRequestException, Injectable, Logger } from '@nestjs/common';
+import {
+  BadRequestException,
+  Injectable,
+  Logger,
+  NotFoundException,
+} from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import { CategoriesService } from 'src/categories/categories.service';
 import { PlayersService } from 'src/players/players.service';
 import { CreateChallengeDto } from './dto/create-challenge.dto';
+import { UpdateChallengeDto } from './dto/update-challenge.dto';
 import { ChallengeStatus } from './enum/challenge-status.enum';
 import { Challenge } from './interfaces/challenge.interface';
 
@@ -32,11 +38,10 @@ export class ChallengesService {
         throw new BadRequestException(`Id ${playerDto._id} is not player`);
       }
     });
-
     const requestingPlayerIsMatch = await createChallengeDto.players.filter(
       (player) => player._id == createChallengeDto.challenger,
     );
-
+    this.logger.debug('requestingPlayersIsMatch', requestingPlayerIsMatch);
     if (requestingPlayerIsMatch.length == 0) {
       throw new BadRequestException(`The requesting player is not matching`);
     }
@@ -57,5 +62,55 @@ export class ChallengesService {
     createChallenge.status = ChallengeStatus.PENDING;
 
     return await createChallenge.save();
+  }
+
+  async consultAllChallenges(): Promise<Challenge[]> {
+    return await this.challengeModel
+      .find()
+      .populate('challenger')
+      .populate('players')
+      .populate('match');
+  }
+
+  async consultChallengesByPlayer(_id: any): Promise<Challenge[]> {
+    const players = await this.playersService.findAllPlayers();
+
+    const playerFilter = players.filter((player) => player._id == _id);
+
+    if (playerFilter.length == 0) {
+      throw new BadRequestException(`O id: ${_id} does not belong to a player`);
+    }
+
+    return await this.challengeModel
+      .find()
+      .where('players')
+      .in(_id)
+      .populate('challenger')
+      .populate('players')
+      .populate('match');
+  }
+
+  async updateChallenge(
+    _id: string,
+    updateChallengeDto: UpdateChallengeDto,
+  ): Promise<Challenge> {
+    const foundChallenge = await this.challengeModel.findById(_id);
+
+    if (!foundChallenge) {
+      throw new NotFoundException(`Challenge not found`);
+    }
+
+    if (updateChallengeDto.status) {
+      foundChallenge.dateHourResponse = new Date();
+    }
+
+    foundChallenge.status = updateChallengeDto.status;
+    foundChallenge.dateHourChallenge = updateChallengeDto.dateHourChallenge;
+
+    await this.challengeModel.findOneAndUpdate(
+      { _id },
+      { $set: foundChallenge },
+    );
+    return;
   }
 }
