@@ -13,6 +13,7 @@ import {
 } from '@nestjs/common';
 import { ChallengeStatusValidationPipe } from 'src/shared/pipes/validations-challenge-status.pipes';
 import { ChallengesService } from './challenges.service';
+import { AssignChallengeMatchDto } from './dto/assign-challenge-match.dto';
 import { CreateChallengeDto } from './dto/create-challenge.dto';
 import { UpdateChallengeDto } from './dto/update-challenge.dto';
 import { Challenge } from './interfaces/challenge.interface';
@@ -49,8 +50,18 @@ export class ChallengesController {
   }
 
   @Post(':challenge/match')
-  async assignChallengeMatch() {}
+  async assignChallengeMatch(
+    @Body() assignChallengeMatchDto: AssignChallengeMatchDto,
+    @Param('challenge') _id: string,
+  ): Promise<void> {
+    return this.challengeService.assignChallengeMatch(
+      _id,
+      assignChallengeMatchDto,
+    );
+  }
 
   @Delete(':id')
-  async deleteChallenge() {}
+  async deleteChallenge(@Param('id') _id: string): Promise<void> {
+    await this.challengeService.deleteChallenge(_id);
+  }
 }

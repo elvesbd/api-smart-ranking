@@ -1,6 +1,7 @@
 import {
   BadRequestException,
   Injectable,
+  InternalServerErrorException,
   Logger,
   NotFoundException,
 } from '@nestjs/common';
@@ -8,16 +9,20 @@ import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import { CategoriesService } from 'src/categories/categories.service';
 import { PlayersService } from 'src/players/players.service';
+import { AssignChallengeMatchDto } from './dto/assign-challenge-match.dto';
 import { CreateChallengeDto } from './dto/create-challenge.dto';
 import { UpdateChallengeDto } from './dto/update-challenge.dto';
 import { ChallengeStatus } from './enum/challenge-status.enum';
 import { Challenge } from './interfaces/challenge.interface';
+import { Match } from './interfaces/match.interface';
 
 @Injectable()
 export class ChallengesService {
   constructor(
     @InjectModel('Challenge')
     private readonly challengeModel: Model<Challenge>,
+    @InjectModel('Match')
+    private readonly matchModel: Model<Match>,
     private readonly playersService: PlayersService,
     private readonly categoriesService: CategoriesService,
   ) {}
@@ -112,5 +117,61 @@ export class ChallengesService {
       { $set: foundChallenge },
     );
     return;
+  }
+
+  async assignChallengeMatch(
+    _id: string,
+    assignChallengeMatchDto: AssignChallengeMatchDto,
+  ): Promise<void> {
+    const foundChallenge = await this.challengeModel.findById(_id);
+
+    if (!foundChallenge) {
+      throw new NotFoundException(`Challenge not found`);
+    }
+
+    const playerFilter = foundChallenge.players.filter(
+      (player) => player._id == assignChallengeMatchDto.winner,
+    );
+
+    if (playerFilter.length == 0) {
+      throw new BadRequestException(
+        'the winning player is not part of the challenge',
+      );
+    }
+
+    const createdMatch = new this.matchModel(assignChallengeMatchDto);
+
+    createdMatch.category = foundChallenge.category;
+    createdMatch.players = foundChallenge.players;
+
+    const result = await createdMatch.save();
+
+    foundChallenge.status = ChallengeStatus.ACCOMPLISHED;
+    foundChallenge.match = result._id;
+
+    try {
+      await this.challengeModel
+        .findOneAndUpdate({ _id }, { $set: foundChallenge })
+        .exec();
+    } catch (err) {
+      await this.challengeModel.deleteOne({ _id: result._id });
+      throw new InternalServerErrorException();
+    }
+  }
+
+  async deleteChallenge(_id: string): Promise<void> {
+    const foundChallenge = await this.challengeModel.findById(_id);
+
+    if (!foundChallenge) {
+      throw new BadRequestException('Challenge uncreated challenge');
+    }
+
+    foundChallenge.status = ChallengeStatus.CANCELLED;
+
+    await this.challengeModel.findOneAndUpdate(
+      { _id },
+      { $set: foundChallenge },
+    );
+    // await this.challengeModel.deleteOne({ _id }, { $set: foundChallenge }); delete
   }
 }
