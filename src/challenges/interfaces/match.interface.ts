@@ -5,5 +5,5 @@ export interface Match extends Document {
   category: string;
   players: Player[];
   def: Player;
-  result: Result;
+  result: Result[];
 }
